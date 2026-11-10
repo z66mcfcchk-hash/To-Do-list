@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="DayList">
+<meta name="theme-color" content="#F4F6F5" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0E1514" media="(prefers-color-scheme: dark)">
+<link rel="apple-touch-icon" id="icon" href="">
+<title>DayList</title>
+<style>
+:root{
+  --bg:#F4F6F5; --surface:#FFFFFF; --ink:#10201E; --muted:#66756F; --line:#E1E7E4;
+  --office:#0B6B63; --personal:#4B4FA3; --amber:#B45309; --danger:#B42318;
+  --accent:var(--office); --accent-soft:color-mix(in srgb,var(--accent) 12%,transparent);
+  color-scheme:light dark;
+}
+@media (prefers-color-scheme:dark){
+  :root{--bg:#0E1514;--surface:#162120;--ink:#E8F0EE;--muted:#8DA19B;--line:#243230;
+        --office:#3FB8AC;--personal:#9EA3F0;--amber:#F0B455;--danger:#F97066}
+}
+body[data-cat=personal]{--accent:var(--personal)}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;background:var(--bg);color:var(--ink);
+  font:16px/1.4 -apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",Roboto,sans-serif}
+button{font:inherit;color:inherit;background:none;border:0;padding:0;cursor:pointer}
+button:focus-visible,input:focus-visible,textarea:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+#app{max-width:560px;margin:0 auto;min-height:100vh;padding:calc(env(safe-area-inset-top) + 14px) 18px calc(env(safe-area-inset-bottom) + 130px)}
+
+header{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
+h1{margin:0;font-size:30px;line-height:1.1;font-weight:750;letter-spacing:-.02em}
+.sub{margin-top:4px;color:var(–muted);font-size:14px}
+.hbtns{display:flex;gap:8px}
+.ibtn{width:40px;height:40px;border-radius:12px;background:var(–surface);border:1px solid var(–line);display:grid;place-items:center}
+.ibtn svg{width:20px;height:20px;stroke:var(–ink);fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.ibtn.today{width:auto;padding:0 12px;font-size:14px;font-weight:600;color:var(–accent)}
+
+.strip{display:grid;grid-template-columns:repeat(7,1fr);gap:6px;margin:20px 0 16px}
+.day{display:flex;flex-direction:column;align-items:center;gap:2px;padding:9px 0 8px;border-radius:14px;
+background:var(–surface);border:1px solid var(–line);position:relative}
+.day .w{font-size:11.5px;color:var(–muted)}
+.day .n{font-size:17px;font-weight:650}
+.day .dot{width:5px;height:5px;border-radius:50%;background:transparent;margin-top:1px}
+.day.has .dot{background:var(–accent)}
+.day.sel{background:var(–accent);border-color:var(–accent);color:#fff}
+.day.sel .w{color:#ffffffcc}
+.day.sel.has .dot{background:#fff}
+.day.now:not(.sel) .n{color:var(–accent)}
+
+.progress{display:flex;align-items:center;gap:12px;margin-bottom:14px;font-size:14px;color:var(–muted)}
+.bar{flex:1;height:6px;border-radius:3px;background:var(–line);overflow:hidden}
+.bar i{display:block;height:100%;background:var(–accent);border-radius:3px;transition:width .3s}
+
+.list{background:var(–surface);border:1px solid var(–line);border-radius:18px;overflow:hidden}
+.row{display:flex;gap:14px;align-items:flex-start;padding:14px 16px;border-top:1px solid var(–line);cursor:pointer}
+.row:first-child{border-top:0}
+.chk{width:26px;height:26px;border-radius:50%;border:2px solid var(–muted);flex:none;margin-top:1px;display:grid;place-items:center}
+.chk svg{width:14px;height:14px;stroke:#fff;fill:none;stroke-width:3;stroke-linecap:round;stroke-linejoin:round;opacity:0}
+.row.done .chk{background:var(–accent);border-color:var(–accent)}
+.row.done .chk svg{opacity:1}
+.row.done .t{color:var(–muted);text-decoration:line-through}
+.body{flex:1;min-width:0}
+.t{font-weight:600;overflow-wrap:anywhere}
+.note{font-size:14px;color:var(–muted);margin-top:2px;overflow-wrap:anywhere}
+.meta{display:flex;flex-wrap:wrap;gap:6px 12px;margin-top:6px;font-size:12.5px;color:var(–muted)}
+.meta .time{color:var(–accent);font-weight:600}
+.meta .carried{color:var(–amber);font-weight:600}
+.empty{padding:36px 24px;text-align:center;color:var(–muted)}
+.empty b{display:block;color:var(–ink);font-size:17px;margin-bottom:4px}
+
+.fab{position:fixed;right:max(20px,calc(50% - 260px));bottom:calc(env(safe-area-inset-bottom) + 84px);height:54px;padding:0 22px;border-radius:27px;
+background:var(–accent);color:#fff;font-weight:650;display:flex;align-items:center;gap:8px;box-shadow:0 6px 18px rgba(0,0,0,.22)}
+.fab svg{width:20px;height:20px;stroke:#fff;fill:none;stroke-width:2.4;stroke-linecap:round}
+
+nav{position:fixed;left:0;right:0;bottom:0;background:color-mix(in srgb,var(–surface) 88%,transparent);
+backdrop-filter:saturate(1.8) blur(18px);-webkit-backdrop-filter:saturate(1.8) blur(18px);
+border-top:1px solid var(–line);padding:8px 18px calc(env(safe-area-inset-bottom) + 6px)}
+nav .in{max-width:560px;margin:0 auto;display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.tab{display:flex;flex-direction:column;align-items:center;gap:2px;padding:6px 0;border-radius:12px;color:var(–muted);font-size:12px;font-weight:600;position:relative}
+.tab svg{width:24px;height:24px;stroke:currentColor;fill:none;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+.tab.on[data-c=office]{color:var(–office)}
+.tab.on[data-c=personal]{color:var(–personal)}
+.badge{position:absolute;top:0;left:calc(50% + 8px);min-width:18px;height:18px;border-radius:9px;background:var(–danger);color:#fff;font-size:11px;
+display:grid;place-items:center;padding:0 5px}
+
+.scrim{position:fixed;inset:0;background:rgba(0,0,0,.4);opacity:0;pointer-events:none;transition:opacity .2s;z-index:10}
+.scrim.on{opacity:1;pointer-events:auto}
+.sheet{position:fixed;left:0;right:0;bottom:0;z-index:11;background:var(–bg);border-radius:24px 24px 0 0;
+padding:10px 18px calc(env(safe-area-inset-bottom) + 18px);max-width:560px;margin:0 auto;
+transform:translateY(105%);transition:transform .28s cubic-bezier(.2,.8,.2,1);max-height:92vh;overflow:auto}
+.sheet.on{transform:none}
+.grab{width:38px;height:5px;border-radius:3px;background:var(–line);margin:0 auto 12px}
+.sheet h2{margin:0 0 14px;font-size:20px}
+label{display:block;font-size:13px;color:var(–muted);margin:12px 0 5px}
+input,textarea{width:100%;font:inherit;color:var(–ink);background:var(–surface);border:1px solid var(–line);border-radius:12px;padding:12px 14px;-webkit-appearance:none;appearance:none}
+textarea{resize:none;min-height:70px}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.actions{display:flex;gap:10px;margin-top:18px}
+.btn{flex:1;height:48px;border-radius:14px;font-weight:650;background:var(–surface);border:1px solid var(–line)}
+.btn.primary{background:var(–accent);border-color:var(–accent);color:#fff}
+.btn.danger{color:var(–danger)}
+.btn.wide{width:100%;margin-top:10px;flex:none}
+.hint{font-size:13px;color:var(–muted);margin-top:10px}
+pre{white-space:pre-wrap;background:var(–surface);border:1px solid var(–line);border-radius:12px;padding:12px;font:13px/1.5 ui-monospace,Menlo,monospace;max-height:200px;overflow:auto;margin:12px 0 0}
+
+#toast{position:fixed;left:12px;right:12px;top:calc(env(safe-area-inset-top) + 10px);z-index:20;max-width:536px;margin:0 auto;
+background:var(–ink);color:var(–bg);border-radius:16px;padding:12px 14px;display:flex;gap:12px;align-items:center;
+transform:translateY(-140%);transition:transform .3s}
+#toast.on{transform:none}
+#toast span{flex:1;font-size:14px}
+#toast button{font-weight:700;color:var(–bg);opacity:.85}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+
+</head>
+<body data-cat="office">
+<div id="app">
+  <header>
+    <div>
+      <h1 id="title">Office</h1>
+      <div class="sub" id="sub"></div>
+    </div>
+    <div class="hbtns">
+      <button class="ibtn today" id="todayBtn" hidden>Today</button>
+      <button class="ibtn" id="waBtn" aria-label="Send to WhatsApp">
+        <svg viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-3.6-7.2L21 3l-1 4.4A9 9 0 0 1 21 12Z"/><path d="M8.5 9.5c.5 2.5 2.5 4.5 5 5l1.5-1.5-2-1-1 .7a4 4 0 0 1-1.7-1.7l.7-1-1-2Z"/></svg>
+      </button>
+    </div>
+  </header>
+
+  <div class="strip" id="strip"></div>
+  <div class="progress"><span id="count"></span><div class="bar"><i id="fill"></i></div></div>
+  <div class="list" id="list"></div>
+</div>
+
+<button class="fab" id="add"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>New task</button>
+
+<nav><div class="in">
+  <button class="tab on" data-c="office"><svg viewBox="0 0 24 24"><path d="M4 21V5a1 1 0 0 1 1-1h8a1 1 0 0 1 1 1v16M14 9h5a1 1 0 0 1 1 1v11M2 21h20M8 8h2M8 12h2M8 16h2"/></svg>Office<span class="badge" id="b-office" hidden></span></button>
+  <button class="tab" data-c="personal"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 3.6-6 8-6s8 2 8 6"/></svg>Personal<span class="badge" id="b-personal" hidden></span></button>
+</div></nav>
+
+<div class="scrim" id="scrim"></div>
+
+<div class="sheet" id="taskSheet" role="dialog" aria-modal="true" aria-label="Task">
+  <div class="grab"></div>
+  <h2 id="sheetTitle">New task</h2>
+  <label for="fTitle">Task</label>
+  <input id="fTitle" placeholder="What needs to be done?" autocomplete="off">
+  <label for="fNote">Notes</label>
+  <textarea id="fNote" placeholder="Optional"></textarea>
+  <div class="two">
+    <div><label for="fDate">Date</label><input type="date" id="fDate"></div>
+    <div><label for="fTime">Reminder time</label><input type="time" id="fTime"></div>
+  </div>
+  <button class="btn wide" id="icsBtn" hidden>Add alert to iPhone Calendar</button>
+  <div class="actions">
+    <button class="btn danger" id="delBtn" hidden>Delete</button>
+    <button class="btn" id="cancelBtn">Cancel</button>
+    <button class="btn primary" id="saveBtn">Save</button>
+  </div>
+</div>
+
+<div class="sheet" id="waSheet" role="dialog" aria-modal="true" aria-label="WhatsApp">
+  <div class="grab"></div>
+  <h2>Send today's pending tasks</h2>
+  <label for="fPhone">WhatsApp number (with country code)</label>
+  <input id="fPhone" type="tel" inputmode="tel" placeholder="919XXXXXXXXX">
+  <pre id="waPreview"></pre>
+  <div class="actions">
+    <button class="btn" id="waCancel">Close</button>
+    <button class="btn primary" id="waSend">Open WhatsApp</button>
+  </div>
+</div>
+
+<div id="toast" role="status"><span id="toastText"></span><button id="toastX">Dismiss</button></div>
+
+<script>
+const LS='daylist.v1', LSP='daylist.phone';
+const pad=n=>String(n).padStart(2,'0');
+const key=d=>d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate());
+const parse=k=>new Date(k+'T00:00:00');
+const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const $=id=>document.getElementById(id);
+const fmtTime=t=>{const [h,m]=t.split(':').map(Number);return (h%12||12)+':'+pad(m)+' '+(h<12?'AM':'PM')};
+const fmtDay=k=>parse(k).toLocaleDateString('en-IN',{day:'numeric',month:'short'});
+
+let tasks=JSON.parse(localStorage.getItem(LS)||'[]');
+let cat='office', sel=key(new Date()), editing=null;
+const save=()=>localStorage.setItem(LS,JSON.stringify(tasks));
+
+/* Carry incomplete tasks forward to today */
+function rollover(){
+  const t=key(new Date()); let ch=false;
+  tasks.forEach(x=>{ if(!x.done && x.date<t){ x.from=x.from||x.date; x.date=t; ch=true; } });
+  if(ch) save();
+}
+
+function render(){
+  const today=key(new Date());
+  document.body.dataset.cat=cat;
+  $('title').textContent=cat==='office'?'Office':'Personal';
+  $('sub').textContent=(sel===today?'Today, ':parse(sel).toLocaleDateString('en-IN',{weekday:'long'})+', ')+fmtDay(sel);
+  $('todayBtn').hidden=sel===today;
+
+  // week strip
+  const base=parse(sel); let h='';
+  for(let i=-3;i<=3;i++){
+    const d=new Date(base); d.setDate(d.getDate()+i); const k=key(d);
+    const has=tasks.some(x=>x.cat===cat&&x.date===k&&!x.done);
+    h+=`<button class="day ${k===sel?'sel':''} ${k===today?'now':''} ${has?'has':''}" data-d="${k}">
+      <span class="w">${d.toLocaleDateString('en-IN',{weekday:'short'})}</span><span class="n">${d.getDate()}</span><span class="dot"></span></button>`;
+  }
+  $('strip').innerHTML=h;
+
+  // list
+  const items=tasks.filter(x=>x.cat===cat&&x.date===sel)
+    .sort((a,b)=>(a.done-b.done)||((a.time||'99:99')>(b.time||'99:99')?1:-1));
+  const done=items.filter(x=>x.done).length;
+  $('count').textContent=items.length?`${done} of ${items.length} done`:'No tasks';
+  $('fill').style.width=items.length?(done/items.length*100)+'%':'0%';
+  $('list').innerHTML=items.length?items.map(x=>`
+    <div class="row ${x.done?'done':''}" data-id="${x.id}">
+      <button class="chk" aria-label="${x.done?'Mark not done':'Mark done'}"><svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></button>
+      <div class="body">
+        <div class="t">${esc(x.title)}</div>
+        ${x.note?`<div class="note">${esc(x.note)}</div>`:''}
+        ${(x.time||x.from)?`<div class="meta">${x.time?`<span class="time">${fmtTime(x.time)}</span>`:''}${x.from&&!x.done?`<span class="carried">Carried from ${fmtDay(x.from)}</span>`:''}</div>`:''}
+      </div>
+    </div>`).join(''):`<div class="empty"><b>Nothing planned</b>Tap New task to add one for this day.</div>`;
+
+  // badges: pending for today
+  ['office','personal'].forEach(c=>{
+    const n=tasks.filter(x=>x.cat===c&&x.date===today&&!x.done).length;
+    const b=$('b-'+c); b.hidden=!n; b.textContent=n;
+  });
+  document.querySelectorAll('.tab').forEach(t=>t.classList.toggle('on',t.dataset.c===cat));
+  try{ if(navigator.setAppBadge){ const n=tasks.filter(x=>x.date===today&&!x.done).length; n?navigator.setAppBadge(n):navigator.clearAppBadge(); } }catch(e){}
+}
+
+/* Sheets */
+function openSheet(id){ $('scrim').classList.add('on'); $(id).classList.add('on'); }
+function closeSheets(){ $('scrim').classList.remove('on'); document.querySelectorAll('.sheet').forEach(s=>s.classList.remove('on')); document.activeElement&&document.activeElement.blur(); }
+$('scrim').onclick=closeSheets; $('cancelBtn').onclick=closeSheets; $('waCancel').onclick=closeSheets;
+
+function openTask(t){
+  editing=t?t.id:null;
+  $('sheetTitle').textContent=t?'Edit task':(cat==='office'?'New office task':'New personal task');
+  $('fTitle').value=t?t.title:''; $('fNote').value=t?t.note||'':'';
+  $('fDate').value=t?t.date:sel; $('fTime').value=t?t.time||'':'';
+  $('delBtn').hidden=!t; $('icsBtn').hidden=!(t&&t.time);
+  openSheet('taskSheet');
+  if(!t) setTimeout(()=>$('fTitle').focus(),300);
+}
+$('add').onclick=()=>openTask(null);
+$('fTime').oninput=()=>{ $('icsBtn').hidden=!($('fTime').value&&editing); };
+
+$('saveBtn').onclick=()=>{
+  const title=$('fTitle').value.trim();
+  if(!title){ $('fTitle').focus(); return; }
+  const data={title,note:$('fNote').value.trim(),date:$('fDate').value||sel,time:$('fTime').value};
+  if(editing){ Object.assign(tasks.find(x=>x.id===editing),data); }
+  else tasks.push({id:Date.now().toString(36)+Math.random().toString(36).slice(2,6),cat,done:false,...data});
+  save(); sel=data.date; closeSheets(); render();
+};
+$('delBtn').onclick=()=>{ tasks=tasks.filter(x=>x.id!==editing); save(); closeSheets(); render(); };
+
+/* Calendar alert (.ics) — gives a reliable iPhone notification */
+$('icsBtn').onclick=()=>{
+  const t=tasks.find(x=>x.id===editing); if(!t) return;
+  const d=t.date.replace(/-/g,''), s=t.time.replace(':','')+'00';
+  const [h,m]=t.time.split(':').map(Number); const e=new Date(2000,0,1,h,m+30);
+  const end=pad(e.getHours())+pad(e.getMinutes())+'00';
+  const ics=['BEGIN:VCALENDAR','VERSION:2.0','PRODID:-//DayList//EN','BEGIN:VEVENT',
+    'UID:'+t.id+'@daylist','DTSTAMP:'+d+'T'+s,'DTSTART:'+d+'T'+s,'DTEND:'+d+'T'+end,
+    'SUMMARY:'+t.title.replace(/[,;\n]/g,' '),'BEGIN:VALARM','ACTION:DISPLAY','DESCRIPTION:Reminder','TRIGGER:PT0M','END:VALARM','END:VEVENT','END:VCALENDAR'].join('\r\n');
+  location.href=URL.createObjectURL(new Blob([ics],{type:'text/calendar'}));
+};
+
+/* Interactions */
+$('list').onclick=e=>{
+  const row=e.target.closest('.row'); if(!row) return;
+  const t=tasks.find(x=>x.id===row.dataset.id);
+  if(e.target.closest('.chk')){ t.done=!t.done; save(); render(); }
+  else openTask(t);
+};
+$('strip').onclick=e=>{ const b=e.target.closest('.day'); if(b){ sel=b.dataset.d; render(); } };
+$('todayBtn').onclick=()=>{ sel=key(new Date()); render(); };
+document.querySelectorAll('.tab').forEach(t=>t.onclick=()=>{ cat=t.dataset.c; render(); });
+
+/* WhatsApp: send today's pending list to a number (one tap) */
+function waText(){
+  const t=key(new Date());
+  const part=(c,name)=>{ const l=tasks.filter(x=>x.cat===c&&x.date===t&&!x.done);
+    return l.length?`*${name}*\n`+l.map(x=>'• '+x.title+(x.time?` (${fmtTime(x.time)})`:'')).join('\n'):''; };
+  const body=[part('office','Office'),part('personal','Personal')].filter(Boolean).join('\n\n');
+  return `Pending tasks – ${fmtDay(t)}\n\n`+(body||'All done for today.');
+}
+$('waBtn').onclick=()=>{ $('fPhone').value=localStorage.getItem(LSP)||''; $('waPreview').textContent=waText(); openSheet('waSheet'); };
+$('waSend').onclick=()=>{
+  const p=$('fPhone').value.replace(/\D/g,''); if(p.length<10){ $('fPhone').focus(); return; }
+  localStorage.setItem(LSP,p);
+  location.href='https://wa.me/'+p+'?text='+encodeURIComponent(waText());
+};
+
+/* In-app reminders (while the app is open) */
+const fired=new Set(JSON.parse(sessionStorage.getItem('fired')||'[]'));
+function toast(msg){ $('toastText').textContent=msg; $('toast').classList.add('on'); }
+$('toastX').onclick=()=>$('toast').classList.remove('on');
+function check(){
+  const n=new Date(), t=key(n), hm=pad(n.getHours())+':'+pad(n.getMinutes());
+  tasks.forEach(x=>{
+    if(!x.done&&x.time&&x.date===t&&x.time<=hm){
+      const k=x.id+t+x.time;
+      if(!fired.has(k)){ fired.add(k); sessionStorage.setItem('fired',JSON.stringify([...fired]));
+        toast(`${x.cat==='office'?'Office':'Personal'} reminder: ${x.title}`); }
+    }
+  });
+}
+setInterval(check,20000);
+
+document.addEventListener('visibilitychange',()=>{ if(!document.hidden){ rollover(); render(); check(); } });
+
+/* App icon */
+(function(){
+  const c=document.createElement('canvas'); c.width=c.height=180; const x=c.getContext('2d');
+  x.fillStyle='#0B6B63'; x.fillRect(0,0,180,180);
+  x.strokeStyle='#fff'; x.lineWidth=16; x.lineCap='round'; x.lineJoin='round';
+  x.beginPath(); x.moveTo(48,92); x.lineTo(78,122); x.lineTo(134,58); x.stroke();
+  $('icon').href=c.toDataURL('image/png');
+})();
+
+rollover(); render(); check();
+</script>
+
+</body>
+</html>
